@@ -11,6 +11,9 @@ dist/
 build/
 coverage/
 
+# Generated Prisma Client
+backend/src/generated/prisma/
+
 # Logs
 *.log
 npm-debug.log*

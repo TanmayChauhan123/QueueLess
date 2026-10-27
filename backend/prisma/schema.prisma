@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  BUSINESS_OWNER
+  ADMIN
+}
+
+enum QueueStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum TokenStatus {
+  WAITING
+  CALLED
+  SERVED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businesses   Business[]     @relation("BusinessOwner")
+  tokens       QueueToken[]
+  appointments Appointment[]
+}
+
+model Business {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  address     String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  queues       Queue[]
+  appointments Appointment[]
+
+  @@index([ownerId])
+}
+
+model Queue {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  status      QueueStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  tokens QueueToken[]
+
+  @@index([businessId, status])
+}
+
+model QueueToken {
+  id          String      @id @default(uuid())
+  tokenNumber Int
+  status      TokenStatus @default(WAITING)
+  issuedAt    DateTime    @default(now())
+  calledAt    DateTime?
+  completedAt DateTime?
+
+  queueId String
+  queue   Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([queueId, tokenNumber])
+  @@index([queueId, status])
+  @@index([userId, issuedAt])
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  scheduledAt DateTime
+  status      AppointmentStatus @default(BOOKED)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, scheduledAt])
+  @@index([userId, scheduledAt])
+}
